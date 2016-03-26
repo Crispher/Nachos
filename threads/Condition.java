@@ -13,13 +13,13 @@ import java.util.LinkedList;
  * <p>
  * <p><ul>
  * <p>
- * <li><tt>sleep()</tt>: atomically release the lock and relinkquish the CPU
+ * <li><tt>sleep()</tt>: atomically release the lock and relinquish the CPU
  * until woken; then reacquire the lock.
  * <p>
  * <li><tt>wake()</tt>: wake up a single thread sleeping in this condition
  * variable, if possible.
  * <p>
- * <li><tt>wakeAll()</tt>: wake up all threads sleeping inn this condition
+ * <li><tt>wakeAll()</tt>: wake up all threads sleeping in this condition
  * variable.
  * <p>
  * </ul>

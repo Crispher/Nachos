@@ -2,6 +2,9 @@ package nachos.threads;
 
 import nachos.machine.*;
 
+import java.util.LinkedList;
+import java.util.List;
+
 /**
  * An implementation of condition variables that disables interrupt()s for
  * synchronization.
@@ -32,9 +35,13 @@ public class Condition2 {
      */
     public void sleep() {
         Lib.assertTrue(conditionLock.isHeldByCurrentThread());
-
+        // modified by Crispher
+        boolean intstatus = Machine.interrupt().disable();
+        waitQueue.add(KThread.currentThread());
         conditionLock.release();
-
+        KThread.sleep();
+        Machine.interrupt().restore(intstatus);
+        // end Crispher
         conditionLock.acquire();
     }
 
@@ -44,6 +51,11 @@ public class Condition2 {
      */
     public void wake() {
         Lib.assertTrue(conditionLock.isHeldByCurrentThread());
+        // modified by Crispher
+        if (!waitQueue.isEmpty()) {
+            waitQueue.removeFirst().ready();
+        }
+        // end
     }
 
     /**
@@ -52,7 +64,13 @@ public class Condition2 {
      */
     public void wakeAll() {
         Lib.assertTrue(conditionLock.isHeldByCurrentThread());
+        // Modified by Crispher
+        while (!waitQueue.isEmpty()) {
+            wake();
+        }
+        // end
     }
 
     private Lock conditionLock;
+    private LinkedList<KThread> waitQueue = new LinkedList<>();
 }
