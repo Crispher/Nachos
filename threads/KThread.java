@@ -4,6 +4,9 @@ import nachos.machine.Lib;
 import nachos.machine.Machine;
 import nachos.machine.TCB;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * A KThread is a thread that can be used to execute Nachos kernel code. Nachos
  * allows multiple threads to run concurrently.
@@ -183,9 +186,16 @@ public class KThread {
      * delete this thread.
      */
     public static void finish() {
+
         Lib.debug(dbgThread, "Finishing thread: " + currentThread.toString());
 
         Machine.interrupt().disable();
+
+        // modified by Crispher
+        for (int i = 0; i < currentThread.joinList.size(); i++) {
+            currentThread.joinList.get(i).ready();
+        }
+        // end
 
         Machine.autoGrader().finishingCurrentThread();
 
@@ -278,8 +288,21 @@ public class KThread {
 
         Lib.assertTrue(this != currentThread);
 
+        // modified by Crispher
+        if (status == statusFinished) {
+            return;
+        } else {
+            Machine.interrupt().disable();  // I don't know why is this necessary.
+            joinList.add(currentThread);
+            currentThread.sleep();
+            return;
+        }
+        // end
     }
 
+    // modified by Crispher
+    private List<KThread> joinList = new ArrayList<>();
+    // end
     /**
      * Create the idle thread. Whenever there are no threads ready to be run,
      * and <tt>runNextThread()</tt> is called, it will run the idle thread. The
@@ -405,9 +428,33 @@ public class KThread {
      */
     public static void selfTest() {
         Lib.debug(dbgThread, "Enter KThread.selfTest");
-
+        /* Commented out by Crispher for debugging
         new KThread(new PingTest(1)).setName("forked thread").fork();
         new PingTest(0).run();
+        */
+
+        final KThread t0 = new KThread(new Runnable() {
+            @Override
+            public void run() {
+                for (int i = 0; i < 5; i++) {
+                    System.out.println("Joined Thread looping " + i);
+                    currentThread.yield();
+                }
+            }
+        }).setName("Joined thread");
+
+        KThread t1 = new KThread(new Runnable() {
+            @Override
+            public void run() {
+                System.out.println("Before join.");
+                t0.join();
+                System.out.println("After join, before halt");
+            }
+        }).setName("Waiting thread");
+
+        t0.fork();
+        t1.fork();
+        // end Crispher
     }
 
     private static final char dbgThread = 't';
