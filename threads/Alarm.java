@@ -1,6 +1,12 @@
 package nachos.threads;
 
+import com.sun.org.apache.bcel.internal.generic.ARRAYLENGTH;
+import com.sun.org.apache.xml.internal.utils.ThreadControllerWrapper;
 import nachos.machine.*;
+import nachos.machine.Timer;
+
+import javax.crypto.Mac;
+import java.util.*;
 
 /**
  * Uses the hardware timer to provide preemption, and to allow threads to sleep
@@ -20,6 +26,7 @@ public class Alarm {
                 timerInterrupt();
             }
         });
+
     }
 
     /**
@@ -29,6 +36,21 @@ public class Alarm {
      * that should be run.
      */
     public void timerInterrupt() {
+        // modified by Crispher
+        
+        boolean intstatus = Machine.interrupt().disable();
+        ListIterator<KThreadWrapper> iter = waitQueue.listIterator();
+        while (iter.hasNext()) {
+            KThreadWrapper t = iter.next();
+            if (t.wakeTime < Machine.timer().getTime()) {
+                t.kThread.ready();
+            }
+            iter.remove();
+        }
+
+        Machine.interrupt().restore(intstatus);
+        // end Crispher
+
         KThread.currentThread().yield();
     }
 
@@ -46,9 +68,34 @@ public class Alarm {
      * @see    nachos.machine.Timer#getTime()
      */
     public void waitUntil(long x) {
+        /* commented out by Crispher
         // for now, cheat just to get something working (busy waiting is bad)
         long wakeTime = Machine.timer().getTime() + x;
         while (wakeTime > Machine.timer().getTime())
             KThread.yield();
+        */
+        // modified by Crispher
+        lock.acquire();
+        long wakeTime = Machine.timer().getTime() + x;
+        waitQueue.add(new KThreadWrapper(KThread.currentThread(), wakeTime));
+        lock.release();
+
+        KThread.sleep();
+
+        // end
     }
+
+    // modified by Crispher
+    class KThreadWrapper {
+        public KThread kThread;
+        public long wakeTime;
+        public KThreadWrapper(KThread kThread, long wakeTime) {
+            this.kThread = kThread;
+            this.wakeTime = wakeTime;
+        }
+    }
+
+    private LinkedList<KThreadWrapper> waitQueue = new LinkedList<>();
+    Lock lock = new Lock();
+    //end
 }
