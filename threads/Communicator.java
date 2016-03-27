@@ -14,6 +14,11 @@ public class Communicator {
      * Allocate a new communicator.
      */
     public Communicator() {
+        // modified by Crispher
+        lock = new Lock();
+        speakerCondition = new Condition(lock);
+        listenerCondition = new Condition(lock);
+        // end
     }
 
     /**
@@ -27,6 +32,16 @@ public class Communicator {
      * @param    word    the integer to transfer.
      */
     public void speak(int word) {
+        // modified by Crispher
+        lock.acquire();
+        while (numListeners == 0) {
+            speakerCondition.sleep();
+        }
+        data = word;
+        dataReady = true;
+        listenerCondition.wake();   // it's up to the waken listener to acquire the lock before the data is consumed
+        lock.release();
+        // end
     }
 
     /**
@@ -36,6 +51,26 @@ public class Communicator {
      * @return the integer transferred.
      */
     public int listen() {
-        return 0;
+        // modified by Crispher
+        lock.acquire();
+        while (!dataReady) {
+            numListeners++;
+            speakerCondition.wake();
+            listenerCondition.sleep();
+            numListeners--; // lock is reacquired before wake sleep() returns
+        }
+        dataReady = false;  // the data is consumed
+        int word = data;
+        lock.release();
+        return word;
     }
+
+    // modified by Crispher
+    private int data;
+    private boolean dataReady = false;
+    private int  numListeners = 0; // number of threads on speakerCondition
+    // above members are all protected by lock
+    private Lock lock;
+    private Condition speakerCondition, listenerCondition;
+    // end
 }
