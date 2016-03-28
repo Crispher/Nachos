@@ -37,27 +37,21 @@ public class PriorityScheduler extends Scheduler {
     public void selfTest() {
         Machine.interrupt().disable();
         KThread t0 = new KThread(), t1 = new KThread(), t2 = new KThread();
-        t0.setName("t0"); t1.setName("t1"); t2.setName("t2");
-        ThreadState ts0 = new ThreadState(t0), ts1 = new ThreadState(t1), ts2 = new ThreadState(t2);
-        ts0.enqueueTime = 12;
-        ts1.enqueueTime = 13;
-        ts2.enqueueTime = 12;
-        ts0.effectivePriority = 3;
-        ts1.effectivePriority = 4;
-        ts2.effectivePriority = 4;
-        TreeSet<ThreadState> treeSet = new TreeSet<>(new ThreadComparator());
-        treeSet.add(ts0);
-        treeSet.add(ts1);
-        treeSet.add(ts2);
-        treeSet.remove(treeSet.first());
+        t0.setName("t0");
+        t1.setName("t1");
+        ThreadState ts0 = getThreadState(t0);
+        ThreadState ts1 = getThreadState(t1);
 
         PriorityQueue pq = (PriorityQueue) newThreadQueue(true);
+        PriorityQueue pq2 = (PriorityQueue) newThreadQueue(true);
+        pq.name = "pq"; pq2.name = "pq2";
         pq.waitForAccess(t0);
         pq.waitForAccess(t1);
-        KThread t = pq.nextThread();
-        debug("" + (t == t0) + (pq.currentHolder == t0.schedulingState));
-        KThread tt = pq.nextThread();
-        debug("" + (tt == t1) + (pq.currentHolder == t1.schedulingState));
+        pq.nextThread();
+        pq2.waitForAccess(t0);
+        pq.nextThread();
+        debug(ts0.thread.getName() + " out : " + (ts0.waitingResource == null));
+        debug(pq.currentHolder.thread.getName());
     }
 
 
@@ -181,9 +175,7 @@ public class PriorityScheduler extends Scheduler {
             // choose the one with highest effective priority, should call acquire();
             // the queue, as a resource should have its priority as member, update when
             // acquire() or waitForAccess() is called
-            debug("c: ");
             if (threadTreeSet.isEmpty()) {
-                debug("d: ");
                 return null;
             }
 
@@ -233,13 +225,13 @@ public class PriorityScheduler extends Scheduler {
         protected int priority = -1;
         protected TreeSet<ThreadState> threadTreeSet = new TreeSet<>(new ThreadComparator());
         protected ThreadState currentHolder = null;
+        protected String name = "";
 
         /**
          * update the priority of the queue caused by the effective priority change in
          * thread, also update the threads effective priority.
          */
         protected void updatePriority(ThreadState thread, int priority) {
-            debug("f: " + threadTreeSet.size());
             Lib.assertTrue(threadTreeSet.contains(thread));
             // either a raise or a fall
             if (thread.effectivePriority != priority) {
@@ -248,7 +240,6 @@ public class PriorityScheduler extends Scheduler {
                 threadTreeSet.add(thread);
             }
             updatePriority();
-            debug("g: " + threadTreeSet.size());
         }
 
         protected void updatePriority() {
@@ -423,16 +414,14 @@ public class PriorityScheduler extends Scheduler {
 
             // implement me
             // Crispher, should update the resource holder's e priority
-            debug("i: " + thread.getName());
             Lib.assertTrue(!waitQueue.threadTreeSet.contains(this));
 
             enqueueTime = Machine.timer().getTime();
 
             Lib.assertTrue(waitingResource == null);
             waitingResource = waitQueue;
-            debug("h: " + waitQueue.threadTreeSet.size());
+
             waitQueue.threadTreeSet.add(this);
-            debug("e: " + waitQueue.threadTreeSet.size());
             waitQueue.updatePriority(this, this.effectivePriority);
             // done
         }
@@ -450,9 +439,7 @@ public class PriorityScheduler extends Scheduler {
         public void acquire(PriorityQueue waitQueue) {
             // implement me
             // Crispher, update my e priority if waitQueue.transfer is on
-            debug("a: ");
             if (waitQueue.currentHolder != null) {
-                debug("b: ");
                 waitQueue.currentHolder.release(waitQueue);
             }
             waitQueue.currentHolder = this;
@@ -488,6 +475,7 @@ public class PriorityScheduler extends Scheduler {
         protected long enqueueTime = -1;
         protected PriorityQueue waitingResource = null;
         protected LinkedList<PriorityQueue> holdingResources = new LinkedList<>();
+        protected String name = ""; // for debug use only;
         // end
     }
 }
