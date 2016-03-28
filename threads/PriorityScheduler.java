@@ -2,9 +2,7 @@ package nachos.threads;
 
 import nachos.machine.*;
 
-import java.util.TreeSet;
-import java.util.HashSet;
-import java.util.Iterator;
+import java.util.*;
 
 /**
  * A scheduler that chooses threads based on their priorities.
@@ -143,7 +141,24 @@ public class PriorityScheduler extends Scheduler {
         public KThread nextThread() {
             Lib.assertTrue(Machine.interrupt().disabled());
             // implement me
-            return null;
+            // Crispher, add members to specify which "threadState"s are waiting on this queue
+            // choose the one with highest effective priority, should call acquire();
+            // the queue, as a resource should have its priority as member, update when
+            // acquire() or waitForAccess() is called
+
+            if (threadTreeSet.isEmpty()) {
+                return null;
+            }
+
+            ThreadState t = threadTreeSet.first();
+            threadTreeSet.remove(t);
+            updatePriority();
+
+            Lib.assertTrue(t.waitingResource == this);
+            t.waitingResource = null;
+
+            t.acquire(this);
+            return t.thread;
         }
 
         /**
@@ -155,7 +170,12 @@ public class PriorityScheduler extends Scheduler {
          */
         protected ThreadState pickNextThread() {
             // implement me
-            return null;
+            // Crispher useful to decide the new priority of this queue.
+            if (threadTreeSet.isEmpty()) {
+                return null;
+            } else {
+                return threadTreeSet.first();
+            }
         }
 
         public void print() {
@@ -168,7 +188,69 @@ public class PriorityScheduler extends Scheduler {
          * threads to the owning thread.
          */
         public boolean transferPriority;
+
+        // modified by Crispher
+        // the priority of the queue donated by its waiters
+
+        protected int priority = -1;
+        protected TreeSet<ThreadState> threadTreeSet = new TreeSet<>(new ThreadComparator());
+        protected ThreadState currentHolder = null;
+
+        /**
+         * update the priority of the queue caused by the effective priority change in
+         * thread, also update the threads effective priority.
+         */
+        protected void updatePriority(ThreadState thread, int priority) {
+            Lib.assertTrue(threadTreeSet.contains(thread));
+            // either a raise or a fall
+            if (thread.effectivePriority != priority) {
+                threadTreeSet.remove(thread);
+                thread.effectivePriority = priority;
+                threadTreeSet.add(thread);
+                updatePriority();
+            }
+        }
+
+        protected void updatePriority() {
+            if (transferPriority && !threadTreeSet.isEmpty()) {
+                if (this.priority != pickNextThread().effectivePriority) {
+                    this.priority = pickNextThread().effectivePriority;
+                    if (currentHolder != null) {
+                        currentHolder.updateEffectivePriority(this);
+                    }
+                }
+            }
+        }
+        // end
     }
+
+    // modified by Crispher
+
+    /**
+     * first compare effective priority, then enqueue time.
+     */
+
+    protected class ThreadComparator implements Comparator<ThreadState> {
+        @Override
+        public int compare(ThreadState t0, ThreadState t1) {
+            if (t0.effectivePriority > t1.effectivePriority) {
+                return -1;
+            } else if (t0.effectivePriority == t1.effectivePriority) {
+                if (t0.enqueueTime > t1.enqueueTime) {
+                    return -1;
+                } else if (t0.enqueueTime == t1.enqueueTime) {
+                    Lib.assertTrue(t0.thread == t1.thread);
+                    return 0;
+                } else {
+                    return 1;
+                }
+            } else {
+                return 1;
+            }
+        }
+    }
+
+    // end
 
     /**
      * The scheduling state of a thread. This should include the thread's
@@ -206,7 +288,8 @@ public class PriorityScheduler extends Scheduler {
          */
         public int getEffectivePriority() {
             // implement me
-            return priority;
+            // Crispher
+            return effectivePriority;
         }
 
         /**
@@ -215,12 +298,72 @@ public class PriorityScheduler extends Scheduler {
          * @param    priority    the new priority.
          */
         public void setPriority(int priority) {
+            // modified by Crispher. assert only called on initiation.
+            Lib.assertTrue(effectivePriority < 0);
+            if (effectivePriority < 0) {
+                effectivePriority = priority;
+            }
+
             if (this.priority == priority)
                 return;
 
             this.priority = priority;
 
             // implement me
+            // Modified by Crispher
+
+        }
+
+        /**
+         * Update effective priority on change of a holding resource;
+         */
+        public void updateEffectivePriority(PriorityQueue priorityQueue) {
+            Lib.assertTrue(priorityQueue.transferPriority);
+            int newPriority = -1;
+            // a raise, only update if necessary
+            if (priorityQueue.priority > effectivePriority) {
+                newPriority = priorityQueue.priority;
+            }
+            // a fall, recompute the max
+            if (priorityQueue.priority < effectivePriority) {
+                for (PriorityQueue holdingResource : holdingResources) {
+                    if (holdingResource.priority > newPriority) {
+                        newPriority = holdingResource.priority;
+                    }
+                }
+            }
+
+            if (newPriority > 0) {
+                // there is a need to update effective priority
+                if (waitingResource == null) {
+                    effectivePriority = newPriority;
+                } else {
+                    // let the waitqueue update my effective priority, as well as his own
+                    waitingResource.updatePriority(this, newPriority);
+                }
+            }
+            Lib.assertTrue(newPriority < 0);
+        }
+
+        /**
+         * update on release of a holding resource
+         */
+        public void updateEffectivePriority() {
+            int newPriority = -1;
+            for (PriorityQueue holdingResource : holdingResources) {
+                if (holdingResource.priority > newPriority) {
+                    newPriority = holdingResource.priority;
+                }
+            }
+            Lib.assertTrue(newPriority <= effectivePriority);
+            if (newPriority > 0 && this.effectivePriority != newPriority) {
+                // in case the set is non-empty and a change is necessary
+                if (waitingResource == null) {
+                    effectivePriority = newPriority;
+                } else {
+                    waitingResource.updatePriority(this, newPriority);
+                }
+            }
         }
 
         /**
@@ -236,6 +379,17 @@ public class PriorityScheduler extends Scheduler {
          */
         public void waitForAccess(PriorityQueue waitQueue) {
             // implement me
+            // Crispher, should update the resource holder's e priority
+            Lib.assertTrue(!waitQueue.threadTreeSet.contains(this));
+
+            enqueueTime = Machine.timer().getTime();
+
+            Lib.assertTrue(waitingResource == null);
+            waitingResource = waitQueue;
+
+            waitQueue.threadTreeSet.add(this);
+            waitQueue.updatePriority(this, this.effectivePriority);
+            // done
         }
 
         /**
@@ -250,6 +404,25 @@ public class PriorityScheduler extends Scheduler {
          */
         public void acquire(PriorityQueue waitQueue) {
             // implement me
+            // Crispher, update my e priority if waitQueue.transfer is on
+
+            if (waitQueue.currentHolder != null) {
+                waitQueue.currentHolder.release(waitQueue);
+                waitQueue.currentHolder = this;
+            }
+            holdingResources.add(waitQueue);
+            updateEffectivePriority(waitQueue);
+        }
+
+        /**
+         * release the queue that is currently held by this.
+         * notify my waiting queue (if any) to update my effective priority
+         */
+
+        public void release(PriorityQueue holdingResource) {
+            Lib.assertTrue(holdingResources.contains(holdingResource));
+            holdingResources.remove(holdingResource);
+            updateEffectivePriority();
         }
 
         /**
@@ -260,5 +433,15 @@ public class PriorityScheduler extends Scheduler {
          * The priority of the associated thread.
          */
         protected int priority;
+
+        // modified by Crispher
+        protected int effectivePriority = -1;
+        /**
+         * the time this thread is enqueued.
+         */
+        protected long enqueueTime = -1;
+        protected PriorityQueue waitingResource = null;
+        protected LinkedList<PriorityQueue> holdingResources = new LinkedList<>();
+        // end
     }
 }

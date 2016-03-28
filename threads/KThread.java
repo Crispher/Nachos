@@ -294,7 +294,7 @@ public class KThread {
         } else {
             Machine.interrupt().disable();  // I don't know why is this necessary.
             joinList.add(currentThread);
-            currentThread.sleep();
+            sleep();
             return;
         }
         // end
