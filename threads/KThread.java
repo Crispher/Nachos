@@ -433,27 +433,9 @@ public class KThread {
         new PingTest(0).run();
         */
 
-        final KThread t0 = new KThread(new Runnable() {
-            @Override
-            public void run() {
-                for (int i = 0; i < 5; i++) {
-                    System.out.println("Joined Thread looping " + i);
-                    currentThread.yield();
-                }
-            }
-        }).setName("Joined thread");
+        // test of P5
+        new PriorityScheduler().selfTest();
 
-        KThread t1 = new KThread(new Runnable() {
-            @Override
-            public void run() {
-                System.out.println("Before join.");
-                t0.join();
-                System.out.println("After join, before halt");
-            }
-        }).setName("Waiting thread");
-
-        t0.fork();
-        t1.fork();
         // end Crispher
     }
 
