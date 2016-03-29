@@ -39,7 +39,6 @@ public class Alarm {
         // modified by Crispher
 
         boolean intstatus = Machine.interrupt().disable();
-        System.out.println(Machine.timer().getTime() + ": " + waitQueue.size());
         ListIterator<KThreadWrapper> iter = waitQueue.listIterator();
         while (iter.hasNext()) {
             KThreadWrapper t = iter.next();
