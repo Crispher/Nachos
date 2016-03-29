@@ -35,53 +35,7 @@ public class PriorityScheduler extends Scheduler {
     }
 
     public void selfTest() {
-        Machine.interrupt().disable();
-        KThread t0 = new KThread(), t1 = new KThread(), t2 = new KThread();
-        t0.setName("t0");
-        t1.setName("t1");
-        t2.setName("t2");
-        ThreadState ts0 = getThreadState(t0);
-        ThreadState ts1 = getThreadState(t1);
-        ThreadState ts2 = getThreadState(t2);
-
-        PriorityQueue r0 = (PriorityQueue) newThreadQueue(true);
-        PriorityQueue r1 = (PriorityQueue) newThreadQueue(true);
-        r0.name = "r0"; r1.name = "r1";
-
-        r0.waitForAccess(t0);
-        setPriority(t0, 3);
-        r0.waitForAccess(t1);
-        setPriority(t1, 4);
-        KThread t = r0.nextThread();
-        getThreadState(t).print();
-        r1.waitForAccess(t);
-        r1.print();
-        setPriority(t0, 5);
-        r0.print();
-        r1.print();
-        ts0.print();
-        ts1.print();
-
-        debug("");
-        setPriority(t1, 2);
-        r0.print();
-        r1.print();
-        ts0.print();
-        ts1.print();
-
-        r1.nextThread();
-        debug("");
-        r0.print();
-        r1.print();
-        ts0.print();
-        ts1.print();
-
-        r0.nextThread();
-        debug("");
-        r0.print();
-        r1.print();
-        ts0.print();
-        ts1.print();
+        (new PrioritySchedulerTest()).RunAllTest();
     }
 
 

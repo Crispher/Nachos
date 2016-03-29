@@ -1,11 +1,9 @@
 package nachos.threads;
 
-import nachos.machine.Kernel;
 import nachos.machine.Lib;
 import nachos.machine.Machine;
 import nachos.machine.TCB;
 
-import javax.crypto.Mac;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -430,15 +428,9 @@ public class KThread {
      */
     public static void selfTest() {
         Lib.debug(dbgThread, "Enter KThread.selfTest");
-        /* Commented out by Crispher for debugging
-        new KThread(new PingTest(1)).setName("forked thread").fork();
-        new PingTest(0).run();
-        */
 
-        // test of P5
-        new PriorityScheduler().selfTest();
-
-        // end Crispher
+        new KThreadTest().RunAllTest();
+        new PrioritySchedulerTest().RunAllTest();
     }
 
     private static final char dbgThread = 't';
