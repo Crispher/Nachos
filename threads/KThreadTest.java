@@ -133,6 +133,95 @@ public class KThreadTest {
         System.out.println("[Condition][Test 1] ends.");
     }
 
+    private void conditionTest2() {
+        Lock conditionLock = new Lock();
+        Condition condition = new Condition(conditionLock);
+        Condition condition2 = new Condition(conditionLock);
+
+        class final_int {
+            public int number = 0;
+        }
+        final final_int item = new final_int();
+        final final_int minus_item = new final_int();
+
+        ArrayList<Runnable> runnables = new ArrayList<>();
+
+        Runnable resumer1 = new Runnable() {
+            @Override
+            public void run() {
+                conditionLock.acquire();
+                while (item.number == 0)
+                    condition.sleep();
+                item.number--;
+                System.out.println("[item] resumed one item, num: "
+                        + item.number);
+                condition.wakeAll();
+                conditionLock.release();
+            }
+        };
+
+        Runnable resumer2 = new Runnable() {
+            @Override
+            public void run() {
+                conditionLock.acquire();
+                while (minus_item.number == 0)
+                    condition2.sleep();
+                minus_item.number++;
+                System.out.println("[minus_item] resumed one item, num: "
+                        + minus_item.number);
+                condition2.wakeAll();
+                conditionLock.release();
+            }
+        };
+
+        Runnable producer1 = new Runnable() {
+            @Override
+            public void run() {
+                conditionLock.acquire();
+                while (item.number != 0)
+                    condition.sleep();
+                item.number += 4;
+                System.out.println("[item] producer1 produces 4 items, num: "
+                        + item.number);
+                condition.wakeAll();
+                conditionLock.release();
+            }
+        };
+
+        Runnable producer2 = new Runnable() {
+            @Override
+            public void run() {
+                conditionLock.acquire();
+                while (minus_item.number != 0)
+                    condition2.sleep();
+                minus_item.number -= 4;
+                System.out.println("[minus_item] producer1 produces -4 items,"
+                        + " num: " + minus_item.number);
+                condition2.wakeAll();
+                conditionLock.release();
+            }
+        };
+
+        runnables.add(resumer1);
+        runnables.add(producer1);
+        runnables.add(resumer2);
+        runnables.add(producer2);
+
+        ArrayList<KThread> threads = new ArrayList<>();
+        for (int i = 0; i < 20; i++)
+            for (int j = 0; j < 4; j++) {
+                int k = j % 2 == 0 ? 4 : 1;
+                for (int kk = 0; kk < k; kk++)
+                   threads.add(new KThread(runnables.get(j)));
+            }
+
+        for (KThread t : threads)
+            t.fork();
+
+        for (KThread t : threads)
+            t.join();
+    }
+
     private void condition2Test1() {
         System.out.println("[Condition2][Test 1] begins.");
         final Lock conditionLock = new Lock();
@@ -187,6 +276,95 @@ public class KThreadTest {
         System.out.println("[Condition2][Test 1] ends.");
     }
 
+    private void condition2Test2() {
+        Lock conditionLock = new Lock();
+        Condition2 condition = new Condition2(conditionLock);
+        Condition2 condition2 = new Condition2(conditionLock);
+
+        class final_int {
+            public int number = 0;
+        }
+        final final_int item = new final_int();
+        final final_int minus_item = new final_int();
+
+        ArrayList<Runnable> runnables = new ArrayList<>();
+
+        Runnable resumer1 = new Runnable() {
+            @Override
+            public void run() {
+                conditionLock.acquire();
+                while (item.number == 0)
+                    condition.sleep();
+                item.number--;
+                System.out.println("[item] resumed one item, num: "
+                        + item.number);
+                condition.wakeAll();
+                conditionLock.release();
+            }
+        };
+
+        Runnable resumer2 = new Runnable() {
+            @Override
+            public void run() {
+                conditionLock.acquire();
+                while (minus_item.number == 0)
+                    condition2.sleep();
+                minus_item.number++;
+                System.out.println("[minus_item] resumed one item, num: "
+                        + minus_item.number);
+                condition2.wakeAll();
+                conditionLock.release();
+            }
+        };
+
+        Runnable producer1 = new Runnable() {
+            @Override
+            public void run() {
+                conditionLock.acquire();
+                while (item.number != 0)
+                    condition.sleep();
+                item.number += 4;
+                System.out.println("[item] producer1 produces 4 items, num: "
+                        + item.number);
+                condition.wakeAll();
+                conditionLock.release();
+            }
+        };
+
+        Runnable producer2 = new Runnable() {
+            @Override
+            public void run() {
+                conditionLock.acquire();
+                while (minus_item.number != 0)
+                    condition2.sleep();
+                minus_item.number -= 4;
+                System.out.println("[minus_item] producer1 produces -4 items,"
+                        + " num: " + minus_item.number);
+                condition2.wakeAll();
+                conditionLock.release();
+            }
+        };
+
+        runnables.add(resumer1);
+        runnables.add(producer1);
+        runnables.add(resumer2);
+        runnables.add(producer2);
+
+        ArrayList<KThread> threads = new ArrayList<>();
+        for (int i = 0; i < 20; i++)
+            for (int j = 0; j < 4; j++) {
+                int k = j % 2 == 0 ? 4 : 1;
+                for (int kk = 0; kk < k; kk++)
+                    threads.add(new KThread(runnables.get(j)));
+            }
+
+        for (KThread t : threads)
+            t.fork();
+
+        for (KThread t : threads)
+            t.join();
+    }
+
     private void alarmTest1() {
         System.out.println("[Alarm][Test 1] begins.");
         Alarm alarm = new Alarm();
@@ -217,9 +395,12 @@ public class KThreadTest {
     public void RunAllTest() {
         joinTest1();
         joinTest2();
+
         conditionTest1();
-        // FIXME: bug here, it seems it's related to interrupt's enable status
         condition2Test1();
+        conditionTest2();
+        condition2Test2();
+        
         alarmTest1();
     }
 }
