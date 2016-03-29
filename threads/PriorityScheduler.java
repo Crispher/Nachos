@@ -502,7 +502,9 @@ public class PriorityScheduler extends Scheduler {
             }
             waitQueue.currentHolder = this;
             holdingResources.add(waitQueue);
-            updateEffectivePriority(waitQueue);
+            if (waitQueue.transferPriority) {
+                updateEffectivePriority(waitQueue);
+            }
         }
 
         /**
