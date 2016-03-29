@@ -53,7 +53,7 @@ public class Alarm {
         Machine.interrupt().restore(intstatus);
         // end Crispher
 
-        KThread.currentThread().yield();
+        KThread.yield();
     }
 
     /**
@@ -77,12 +77,13 @@ public class Alarm {
             KThread.yield();
         */
         // modified by Crispher
-        Machine.interrupt().disable();
+
         lock.acquire();
         long wakeTime = Machine.timer().getTime() + x;
         waitQueue.add(new KThreadWrapper(KThread.currentThread(), wakeTime));
         lock.release();
 
+        Machine.interrupt().disable();
         KThread.sleep();
 
         // end
