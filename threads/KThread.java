@@ -1,9 +1,11 @@
 package nachos.threads;
 
+import nachos.machine.Kernel;
 import nachos.machine.Lib;
 import nachos.machine.Machine;
 import nachos.machine.TCB;
 
+import javax.crypto.Mac;
 import java.util.ArrayList;
 import java.util.List;
 

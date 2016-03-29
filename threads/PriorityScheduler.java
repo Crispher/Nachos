@@ -39,19 +39,49 @@ public class PriorityScheduler extends Scheduler {
         KThread t0 = new KThread(), t1 = new KThread(), t2 = new KThread();
         t0.setName("t0");
         t1.setName("t1");
+        t2.setName("t2");
         ThreadState ts0 = getThreadState(t0);
         ThreadState ts1 = getThreadState(t1);
+        ThreadState ts2 = getThreadState(t2);
 
-        PriorityQueue pq = (PriorityQueue) newThreadQueue(true);
-        PriorityQueue pq2 = (PriorityQueue) newThreadQueue(true);
-        pq.name = "pq"; pq2.name = "pq2";
-        pq.waitForAccess(t0);
-        pq.waitForAccess(t1);
-        pq.nextThread();
-        pq2.waitForAccess(t0);
-        pq.nextThread();
-        debug(ts0.thread.getName() + " out : " + (ts0.waitingResource == null));
-        debug(pq.currentHolder.thread.getName());
+        PriorityQueue r0 = (PriorityQueue) newThreadQueue(true);
+        PriorityQueue r1 = (PriorityQueue) newThreadQueue(true);
+        r0.name = "r0"; r1.name = "r1";
+
+        r0.waitForAccess(t0);
+        setPriority(t0, 3);
+        r0.waitForAccess(t1);
+        setPriority(t1, 4);
+        KThread t = r0.nextThread();
+        getThreadState(t).print();
+        r1.waitForAccess(t);
+        r1.print();
+        setPriority(t0, 5);
+        r0.print();
+        r1.print();
+        ts0.print();
+        ts1.print();
+
+        debug("");
+        setPriority(t1, 2);
+        r0.print();
+        r1.print();
+        ts0.print();
+        ts1.print();
+
+        r1.nextThread();
+        debug("");
+        r0.print();
+        r1.print();
+        ts0.print();
+        ts1.print();
+
+        r0.nextThread();
+        debug("");
+        r0.print();
+        r1.print();
+        ts0.print();
+        ts1.print();
     }
 
 
@@ -211,6 +241,9 @@ public class PriorityScheduler extends Scheduler {
         public void print() {
             Lib.assertTrue(Machine.interrupt().disabled());
             // implement me (if you want)
+            debug(name + ": " + "Queue size: " + threadTreeSet.size() + ", Current holder: " +
+                    ((currentHolder == null) ? "null" : currentHolder.thread.getName()) +
+                    ", priority: " + priority);
         }
 
         /**
@@ -222,7 +255,7 @@ public class PriorityScheduler extends Scheduler {
         // modified by Crispher
         // the priority of the queue donated by its waiters
 
-        protected int priority = -1;
+        private int priority = -1;
         protected TreeSet<ThreadState> threadTreeSet = new TreeSet<>(new ThreadComparator());
         protected ThreadState currentHolder = null;
         protected String name = "";
@@ -251,9 +284,20 @@ public class PriorityScheduler extends Scheduler {
                     }
                 }
             } else {
-                priority = 0;
+                priority = -1;
             }
         }
+
+        public int getPriority() {
+            if (!transferPriority)
+                Lib.assertTrue(priority == -1);
+            return priority;
+        }
+
+        public void setPriority(int priority) {
+            this.priority = priority;
+        }
+
         // end
     }
 
@@ -333,9 +377,10 @@ public class PriorityScheduler extends Scheduler {
          */
         public void setPriority(int priority) {
             // modified by Crispher. assert only called on initiation.
-            Lib.assertTrue(effectivePriority < 0);
             if (effectivePriority < 0) {
                 effectivePriority = priority;
+                this.priority = priority;
+                return;
             }
 
             if (this.priority == priority)
@@ -345,29 +390,36 @@ public class PriorityScheduler extends Scheduler {
 
             // implement me
             // Modified by Crispher
+            // // TODO: 3/29/2016
 
+            int donatedPriority = maxHoldingResourcePriority();
+            int newEffectivePriority = donatedPriority > priority ? donatedPriority : priority;
+            if (newEffectivePriority != effectivePriority) {
+                if (waitingResource != null) {
+                    waitingResource.updatePriority(this, newEffectivePriority);
+                } else {
+                    effectivePriority = newEffectivePriority;
+                }
+            }
         }
 
         /**
          * Update effective priority on change of a holding resource;
          */
-        public void updateEffectivePriority(PriorityQueue priorityQueue) {
+        protected void updateEffectivePriority(PriorityQueue priorityQueue) {
             Lib.assertTrue(priorityQueue.transferPriority);
             int newPriority = -1;
             // a raise, only update if necessary
-            if (priorityQueue.priority > effectivePriority) {
-                newPriority = priorityQueue.priority;
+            if (priorityQueue.getPriority() > effectivePriority) {
+                newPriority = priorityQueue.getPriority();
             }
             // a fall, recompute the max
-            if (priorityQueue.priority < effectivePriority) {
-                for (PriorityQueue holdingResource : holdingResources) {
-                    if (holdingResource.priority > newPriority) {
-                        newPriority = holdingResource.priority;
-                    }
-                }
+            else if (priorityQueue.getPriority() < effectivePriority) {
+                newPriority = maxHoldingResourcePriority();
+                newPriority = newPriority > priority ? newPriority : priority;
             }
 
-            if (newPriority >= 0) {
+            if (newPriority >= 0 && newPriority != effectivePriority) {
                 // there is a need to update effective priority
                 if (waitingResource == null) {
                     effectivePriority = newPriority;
@@ -378,18 +430,24 @@ public class PriorityScheduler extends Scheduler {
             }
         }
 
+        private int maxHoldingResourcePriority() {
+            int ans = -1;
+            for (PriorityQueue holdingResource : holdingResources) {
+                if (holdingResource.priority > ans) {
+                    ans = holdingResource.priority;
+                }
+            }
+            return ans;
+        }
+
         /**
          * update on release of a holding resource
          */
-        public void updateEffectivePriority() {
-            int newPriority = -1;
-            for (PriorityQueue holdingResource : holdingResources) {
-                if (holdingResource.priority > newPriority) {
-                    newPriority = holdingResource.priority;
-                }
-            }
+        protected void updateEffectivePriority() {
+            int donatedPriority = maxHoldingResourcePriority();
+            int newPriority = donatedPriority > priority ? donatedPriority : priority;
             Lib.assertTrue(newPriority <= effectivePriority);
-            if (newPriority > 0 && this.effectivePriority != newPriority) {
+            if (this.effectivePriority != newPriority) {
                 // in case the set is non-empty and a change is necessary
                 if (waitingResource == null) {
                     effectivePriority = newPriority;
@@ -436,7 +494,7 @@ public class PriorityScheduler extends Scheduler {
          * @see    nachos.threads.ThreadQueue#acquire
          * @see    nachos.threads.ThreadQueue#nextThread
          */
-        public void acquire(PriorityQueue waitQueue) {
+        protected void acquire(PriorityQueue waitQueue) {
             // implement me
             // Crispher, update my e priority if waitQueue.transfer is on
             if (waitQueue.currentHolder != null) {
@@ -452,7 +510,7 @@ public class PriorityScheduler extends Scheduler {
          * notify my waiting queue (if any) to update my effective priority
          */
 
-        public void release(PriorityQueue holdingResource) {
+        protected void release(PriorityQueue holdingResource) {
             Lib.assertTrue(holdingResources.contains(holdingResource));
             holdingResources.remove(holdingResource);
             updateEffectivePriority();
@@ -476,6 +534,14 @@ public class PriorityScheduler extends Scheduler {
         protected PriorityQueue waitingResource = null;
         protected LinkedList<PriorityQueue> holdingResources = new LinkedList<>();
         protected String name = ""; // for debug use only;
+
+        public void print() {
+            debug(thread.getName() + ": " + "priority: " + priority + ", effective: " + effectivePriority +
+                ", holding: " + holdingResources.size() + ", waiting: " +
+                    ((waitingResource == null) ? "null" : waitingResource.name )
+            );
+        }
+
         // end
     }
 }
