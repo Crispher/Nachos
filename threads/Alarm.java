@@ -39,13 +39,15 @@ public class Alarm {
         // modified by Crispher
 
         boolean intstatus = Machine.interrupt().disable();
+        System.out.println(Machine.timer().getTime() + ": " + waitQueue.size());
         ListIterator<KThreadWrapper> iter = waitQueue.listIterator();
         while (iter.hasNext()) {
             KThreadWrapper t = iter.next();
             if (t.wakeTime < Machine.timer().getTime()) {
                 t.kThread.ready();
+                System.out.println("a");
+                iter.remove();
             }
-            iter.remove();
         }
 
         Machine.interrupt().restore(intstatus);
@@ -75,6 +77,7 @@ public class Alarm {
             KThread.yield();
         */
         // modified by Crispher
+        Machine.interrupt().disable();
         lock.acquire();
         long wakeTime = Machine.timer().getTime() + x;
         waitQueue.add(new KThreadWrapper(KThread.currentThread(), wakeTime));
