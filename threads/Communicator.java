@@ -1,7 +1,6 @@
 package nachos.threads;
 
-import nachos.machine.*;
-
+import nachos.machine.Machine;
 /**
  * A <i>communicator</i> allows threads to synchronously exchange 32-bit
  * messages. Multiple threads can be waiting to <i>speak</i>,
@@ -10,15 +9,24 @@ import nachos.machine.*;
  * threads can be paired off at this point.
  */
 public class Communicator {
+    public Lock lock;
+    public Condition speakerCondition, listenerCondition, waitSpeakerCondition, waitListenerCondition;
+
+    private int numOfListener, numOfSpeaker, data;
+    private boolean dataReady;
     /**
      * Allocate a new communicator.
      */
     public Communicator() {
-        // modified by Crispher
         lock = new Lock();
         speakerCondition = new Condition(lock);
         listenerCondition = new Condition(lock);
-        // end
+        waitSpeakerCondition = new Condition(lock);
+        waitListenerCondition = new Condition(lock);
+
+        numOfListener = 0;
+        numOfSpeaker = 0;
+        data = -1;
     }
 
     /**
@@ -29,19 +37,22 @@ public class Communicator {
      * Does not return until this thread is paired up with a listening thread.
      * Exactly one listener should receive <i>word</i>.
      *
-     * @param    word    the integer to transfer.
+     * @param word the integer to transfer.
      */
     public void speak(int word) {
-        // modified by Crispher
         lock.acquire();
-        while (numListeners == 0) {
+
+        numOfSpeaker++;
+        while (numOfListener < 1 || data != -1) {
             speakerCondition.sleep();
         }
+
         data = word;
-        dataReady = true;
-        listenerCondition.wake();   // it's up to the waken listener to acquire the lock before the data is consumed
+        listenerCondition.wakeAll();
+        waitSpeakerCondition.wakeAll();
+        waitListenerCondition.sleep();
+
         lock.release();
-        // end
     }
 
     /**
@@ -50,27 +61,29 @@ public class Communicator {
      *
      * @return the integer transferred.
      */
-    public int listen() {
-        // modified by Crispher
+     public int listen() {
+        int value = 0;
         lock.acquire();
-        while (!dataReady) {
-            numListeners++;
+
+        numOfListener++;
+        while (numOfSpeaker < 1 || (data == -1)) {
             speakerCondition.wake();
             listenerCondition.sleep();
-            numListeners--; // lock is reacquired before wake sleep() returns
         }
-        dataReady = false;  // the data is consumed
-        int word = data;
-        lock.release();
-        return word;
-    }
 
-    // modified by Crispher
-    private int data;
-    private boolean dataReady = false;
-    private int  numListeners = 0; // number of threads on speakerCondition
-    // above members are all protected by lock
-    private Lock lock;
-    private Condition speakerCondition, listenerCondition;
-    // end
+        while (data == -1)
+            waitSpeakerCondition.sleep();
+
+        value = data;
+        data = -1;
+        numOfListener--;
+        numOfSpeaker--;
+
+        waitListenerCondition.wake();
+        if (numOfSpeaker > 0)
+            speakerCondition.wake();
+
+        lock.release();
+        return value;
+    }
 }
