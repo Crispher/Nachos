@@ -430,6 +430,7 @@ public class KThread {
         Lib.debug(dbgThread, "Enter KThread.selfTest");
 
         new KThreadTest().RunAllTest();
+        new CommunicatorTest().RunAllTest();
         new PrioritySchedulerTest().RunAllTest();
     }
 
