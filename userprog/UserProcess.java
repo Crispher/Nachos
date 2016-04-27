@@ -181,6 +181,7 @@ public class UserProcess {
      */
     public int readVirtualMemory(int vaddr, byte[] data, int offset,
                                  int length) {
+        System.out.println("[DEBUG] read virtual memory, vaddr: " + vaddr);
         Lib.assertTrue(offset >= 0 && length >= 0 && offset + length <= data.length);
 
         byte[] memory = Machine.processor().getMemory();
@@ -405,7 +406,7 @@ public class UserProcess {
                         ppn, true, false, false, false);
                 nextPageTableIndex++;
             }
-
+            
             return true;
         } finally {
             UserKernel.pageLock.release();
@@ -548,7 +549,8 @@ public class UserProcess {
             default:
                 Lib.debug(dbgProcess, "Unexpected exception: " +
                         Processor.exceptionNames[cause]);
-                Lib.assertNotReached("Unexpected exception");
+                handleExit(-1);
+//                Lib.assertNotReached("Unexpected exception");
                 // TODO: unload page table
         }
     }
