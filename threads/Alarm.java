@@ -44,7 +44,6 @@ public class Alarm {
             KThreadWrapper t = iter.next();
             if (t.wakeTime < Machine.timer().getTime()) {
                 t.kThread.ready();
-                System.out.println("a");
                 iter.remove();
             }
         }
