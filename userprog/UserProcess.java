@@ -350,7 +350,6 @@ public class UserProcess {
      * @return <tt>true</tt> if the sections were successfully loaded.
      */
     protected boolean loadSections() {
-        System.out.println("[DEBUG] load sections");
         UserKernel.pageLock.acquire();
         try {
             if (numPages > UserKernel.freePhysicalPages.size()) {
