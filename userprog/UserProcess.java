@@ -191,6 +191,8 @@ public class UserProcess {
                 || !pageTable[vaddrPage].valid)
             return 0;
 
+        pageTable[vaddrPage].used = true;
+
         int paddr = pageTable[vaddrPage].ppn * pageSize + vaddrOffset;
         if (paddr < 0 || paddr >= memory.length)
             return 0;
@@ -245,9 +247,14 @@ public class UserProcess {
                 || pageTable[vaddrPage].readOnly)
             return 0;
 
+
+        pageTable[vaddrPage].used = true;
+
         int paddr = pageTable[vaddrPage].ppn * pageSize + vaddrOffset;
         if (paddr < 0 || paddr >= memory.length)
             return 0;
+
+        pageTable[vaddrPage].dirty = true;
 
         int amount = Math.min(length, memory.length - paddr);
         System.arraycopy(data, offset, memory, paddr, amount);
