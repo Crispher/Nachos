@@ -556,19 +556,18 @@ public class UserProcess {
         return i;
     }
 
-    private int handleClose(int a) {
-        if (a < 0 || a >= MAX_FILE)
-            return -1;
-
-        OpenFile openFile = fileList[a];
-        if (openFile == null)
-            return -1;
-        openFile.close();
-        fileList[a] = null;
-
-        if (!UserKernel.fileManager.close(openFile.getName()))
-            return -1;
-        return 0;
+    private int handleClose (int a) {
+    	if (a < 0 || a >= MAX_FILE) return -1;
+    	OpenFile openFile = fileList[a];
+    	if (openFile == null) return -1;
+    	String fileName = openFile.getName();
+    	openFile.close();
+    	fileList[a] = null;
+    	//if ((fileName != "SynchConsole") && (!UserKernel.fileManager.close(fileName)))
+    	if ((openFile.getFileSystem() != null) && (!UserKernel.fileManager.close(fileName)))	// After discussion with LYP
+			return -1;
+    	else 
+    		return 0;
     }
 
     private int handleUnlink(int a) {
