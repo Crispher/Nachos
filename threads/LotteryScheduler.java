@@ -192,7 +192,6 @@ public class LotteryScheduler extends Scheduler {
                 Lib.assertTrue(numTickets > 0);
                 int lottery = randomGen.nextInt(numTickets);
                 int sum = 0;
-                System.out.println("debug" + numTickets + " " + lottery);
                 for (LThreadState thread:
                      waitingQueue) {
                     if (sum <= lottery &&  lottery < sum + thread.getEffectivePriority()) {
