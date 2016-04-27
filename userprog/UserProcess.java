@@ -4,6 +4,7 @@ import nachos.machine.*;
 import nachos.threads.KThread;
 import nachos.threads.ThreadedKernel;
 
+import javax.crypto.Mac;
 import java.io.EOFException;
 import java.util.LinkedList;
 
@@ -102,7 +103,7 @@ public class UserProcess {
             return false;
 
         //new UThread(this).setName(name).fork();	// original
-	thread = new UThread(this);
+        thread = new UThread(this);
         thread.setName(name).fork();
 
         return true;
@@ -184,23 +185,30 @@ public class UserProcess {
 
         byte[] memory = Machine.processor().getMemory();
 
-        if (vaddr < 0 || vaddr >= memory.length)
+        if (vaddr < 0 || vaddr >= numPages * pageSize)
             return 0;
 
-        int vaddrPage = Processor.pageFromAddress(vaddr),
-                vaddrOffset = Processor.offsetFromAddress(vaddr);
-        if (pageTable[vaddrPage] == null
-                || !pageTable[vaddrPage].valid)
-            return 0;
+        if (vaddr + length > numPages * pageSize)
+            length = numPages * pageSize - vaddr;
 
-        pageTable[vaddrPage].used = true;
+        int amount = 0, firstPage = Machine.processor().pageFromAddress(vaddr),
+                lastPage = Machine.processor().pageFromAddress(vaddr + length - 1);
+        int start, end, pstart, pend;
+        for (int page = firstPage; page <= lastPage; page++) {
+            TranslationEntry t = pageTable[page];
+            if (t != null) {
+                // start and end are in the same page
+                start = Math.max(page * pageSize, vaddr);
+                end = Math.min((page + 1) * pageSize - 1, vaddr + length - 1);
 
-        int paddr = pageTable[vaddrPage].ppn * pageSize + vaddrOffset;
-        if (paddr < 0 || paddr >= memory.length)
-            return 0;
+                pstart = t.ppn * pageSize + Machine.processor().offsetFromAddress(start);
+                pend  = t.ppn * pageSize + Machine.processor().offsetFromAddress(end);
 
-        int amount = Math.min(length, memory.length - paddr);
-        System.arraycopy(memory, paddr, data, offset, amount);
+                System.arraycopy(memory, pstart, data, offset + amount, pend - pstart + 1);
+                amount += pend - pstart + 1;
+                t.used = true;
+            }
+        }
 
         return amount;
     }
@@ -239,27 +247,31 @@ public class UserProcess {
         byte[] memory = Machine.processor().getMemory();
 
         // for now, just assume that virtual addresses equal physical addresses
-        if (vaddr < 0 || vaddr >= memory.length)
+        if (vaddr < 0 || vaddr >= numPages * pageSize)
             return 0;
 
-        int vaddrPage = Processor.pageFromAddress(vaddr),
-                vaddrOffset = Processor.offsetFromAddress(vaddr);
-        if (pageTable[vaddrPage] == null
-                || !pageTable[vaddrPage].valid
-                || pageTable[vaddrPage].readOnly)
-            return 0;
+        if (vaddr + length > numPages * pageSize)
+            length = numPages * pageSize - vaddr;
 
+        int amount = 0, firstPage = Machine.processor().pageFromAddress(vaddr),
+                lastPage = Machine.processor().pageFromAddress(vaddr + length - 1);
+        int start, end, pstart, pend;
+        for (int page = firstPage; page <= lastPage; page++) {
+            TranslationEntry t = pageTable[page];
+            if (t != null) {
+                // start and end are in the same page
+                start = Math.max(page * pageSize, vaddr);
+                end = Math.min((page + 1) * pageSize - 1, vaddr + length - 1);
 
-        pageTable[vaddrPage].used = true;
+                pstart = t.ppn * pageSize + Machine.processor().offsetFromAddress(start);
+                pend  = t.ppn * pageSize + Machine.processor().offsetFromAddress(end);
 
-        int paddr = pageTable[vaddrPage].ppn * pageSize + vaddrOffset;
-        if (paddr < 0 || paddr >= memory.length)
-            return 0;
-
-        pageTable[vaddrPage].dirty = true;
-
-        int amount = Math.min(length, memory.length - paddr);
-        System.arraycopy(data, offset, memory, paddr, amount);
+                System.arraycopy(data, offset + amount, memory, pstart, pend - pstart + 1);
+                amount += pend - pstart + 1;
+                t.used = true;
+                t.dirty = true;
+            }
+        }
 
         return amount;
     }
@@ -413,6 +425,10 @@ public class UserProcess {
         } finally {
             UserKernel.pageLock.release();
         }
+
+        for (int i = 0; i < fileList.length; i++)
+            if (fileList[i] != null)
+                handleClose(i);
     }
 
     /**
@@ -564,18 +580,18 @@ public class UserProcess {
         return i;
     }
 
-    private int handleClose (int a) {
-    	if (a < 0 || a >= MAX_FILE) return -1;
-    	OpenFile openFile = fileList[a];
-    	if (openFile == null) return -1;
-    	String fileName = openFile.getName();
-    	openFile.close();
-    	fileList[a] = null;
-    	//if ((fileName != "SynchConsole") && (!UserKernel.fileManager.close(fileName)))
-    	if ((openFile.getFileSystem() != null) && (!UserKernel.fileManager.close(fileName)))	// After discussion with LYP
-			return -1;
-    	else 
-    		return 0;
+    private int handleClose(int a) {
+        if (a < 0 || a >= MAX_FILE) return -1;
+        OpenFile openFile = fileList[a];
+        if (openFile == null) return -1;
+        String fileName = openFile.getName();
+        openFile.close();
+        fileList[a] = null;
+        //if ((fileName != "SynchConsole") && (!UserKernel.fileManager.close(fileName)))
+        if ((openFile.getFileSystem() != null) && (!UserKernel.fileManager.close(fileName)))    // After discussion with LYP
+            return -1;
+        else
+            return 0;
     }
 
     private int handleUnlink(int a) {
