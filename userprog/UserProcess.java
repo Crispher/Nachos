@@ -101,7 +101,9 @@ public class UserProcess {
         if (!load(name, args))
             return false;
 
-        new UThread(this).setName(name).fork();
+        //new UThread(this).setName(name).fork();	// original
+	thread = new UThread(this);
+        thread.setName(name).fork();
 
         return true;
     }
