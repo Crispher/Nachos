@@ -181,7 +181,6 @@ public class UserProcess {
      */
     public int readVirtualMemory(int vaddr, byte[] data, int offset,
                                  int length) {
-        System.out.println("[DEBUG] read virtual memory, vaddr: " + vaddr);
         Lib.assertTrue(offset >= 0 && length >= 0 && offset + length <= data.length);
 
         byte[] memory = Machine.processor().getMemory();
