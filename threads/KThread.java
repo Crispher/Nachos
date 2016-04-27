@@ -170,6 +170,10 @@ public class KThread {
     private void begin() {
         Lib.debug(dbgThread, "Beginning thread: " + toString());
 
+        // Crispher
+        joinQueue.acquire(this);
+        // end
+
         Lib.assertTrue(this == currentThread);
 
         restoreState();
@@ -194,8 +198,9 @@ public class KThread {
         Machine.interrupt().disable();
 
         // modified by Crispher
-        for (int i = 0; i < currentThread.joinList.size(); i++) {
-            currentThread.joinList.get(i).ready();
+        KThread t;
+        while ((t = currentThread.joinQueue.nextThread()) != null) {
+            t.ready();
         }
         // end
 
@@ -289,21 +294,22 @@ public class KThread {
         Lib.debug(dbgThread, "Joining to thread: " + toString());
 
         Lib.assertTrue(this != currentThread);
-
+        boolean intStatus = Machine.interrupt().disable();
         // modified by Crispher
         if (status == statusFinished) {
+            Machine.interrupt().restore(intStatus);
             return;
         } else {
-            Machine.interrupt().disable();  // I don't know why is this necessary.
-            joinList.add(currentThread);
+            joinQueue.waitForAccess(currentThread);
             sleep();
+            Machine.interrupt().restore(intStatus);
             return;
         }
         // end
     }
 
     // modified by Crispher
-    private List<KThread> joinList = new ArrayList<>();
+    private ThreadQueue joinQueue = ThreadedKernel.scheduler.newThreadQueue(true);
     // end
     /**
      * Create the idle thread. Whenever there are no threads ready to be run,
@@ -357,9 +363,6 @@ public class KThread {
      * changed from running to blocked or ready (depending on whether the
      * thread is sleeping or yielding).
      *
-     * @param finishing <tt>true</tt> if the current thread is
-     *                  finished, and should be destroyed by the new
-     *                  thread.
      */
     private void run() {
         Lib.assertTrue(Machine.interrupt().disabled());
@@ -430,15 +433,11 @@ public class KThread {
      */
     public static void selfTest() {
         Lib.debug(dbgThread, "Enter KThread.selfTest");
-        /* Commented out by Crispher for debugging
+        /*
         new KThread(new PingTest(1)).setName("forked thread").fork();
         new PingTest(0).run();
         */
-
-        // test of P5
-        new PriorityScheduler().selfTest();
-
-        // end Crispher
+        new LotteryScheduler().selfTest();
     }
 
     private static final char dbgThread = 't';
