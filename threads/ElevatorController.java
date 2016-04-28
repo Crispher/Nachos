@@ -1,3 +1,5 @@
+//yhdxt`oi`offt`of{inofinofmhphofx`ofxholhofuh`ov`ofphorih
+//PART OF THE NACHOS. DON'T CHANGE CODE OF THIS LINE
 package nachos.threads;
 
 import nachos.machine.*;
@@ -21,9 +23,9 @@ public class ElevatorController implements ElevatorControllerInterface {
      * after this method returns, but potentially before <tt>run()</tt> is
      * called.
      *
-     * @param    controls    the controller's interface to the elevator
-     * bank. The controler must not attempt to access
-     * the elevator bank in <i>any</i> other way.
+     * @param	controls	the controller's interface to the elevator
+     *				bank. The controler must not attempt to access
+     *				the elevator bank in <i>any</i> other way.
      */
     public void initialize(ElevatorControls controls) {
     }

@@ -27,7 +27,7 @@ import java.util.Iterator;
  * Unlike a priority scheduler, these tickets add (as opposed to just taking
  * the maximum).
  */
-public class LotteryScheduler extends Scheduler {
+public class LotteryScheduler extends PriorityScheduler {
     /**
      * Allocate a new lottery scheduler.
      */
@@ -193,7 +193,7 @@ public class LotteryScheduler extends Scheduler {
                 int lottery = randomGen.nextInt(numTickets);
                 int sum = 0;
                 for (LThreadState thread:
-                     waitingQueue) {
+                        waitingQueue) {
                     if (sum <= lottery &&  lottery < sum + thread.getEffectivePriority()) {
                         return thread;
                     }
@@ -252,7 +252,7 @@ public class LotteryScheduler extends Scheduler {
             int newNumTickets = 0;
 
             for (LThreadState lThreadState :
-                waitingQueue) {
+                    waitingQueue) {
                 newNumTickets += lThreadState.getEffectivePriority();
             }
 
