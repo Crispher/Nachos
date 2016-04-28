@@ -53,8 +53,8 @@ public class UserProcess {
     private int initialPC, initialSP;
     private int argc, argv;
 
-    private static int processCount = 0;
     private static final int ROOT_PROCESS = 0;
+    private static int processCount = ROOT_PROCESS;
     private int processId;
     private int exitStatus;
     private UThread thread;
