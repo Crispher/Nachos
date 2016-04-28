@@ -425,10 +425,7 @@ public class UserProcess {
         } finally {
             UserKernel.pageLock.release();
         }
-
-        for (int i = 0; i < fileList.length; i++)
-            if (fileList[i] != null)
-                handleClose(i);
+        coff.close();
     }
 
     /**
