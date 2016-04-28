@@ -53,8 +53,8 @@ public class UserProcess {
     private int initialPC, initialSP;
     private int argc, argv;
 
-    private static final int ROOT_PROCESS = 0;
-    private static int processCount = ROOT_PROCESS;
+    private static int processCount = 1;
+    private static final int ROOT_PROCESS = 1;
     private int processId;
     private int exitStatus;
     private UThread thread;
@@ -548,7 +548,7 @@ public class UserProcess {
             default:
                 Lib.debug(dbgProcess, "Unexpected exception: " +
                         Processor.exceptionNames[cause]);
-                handleExit(-1);
+                handleExit(UNHANDLED_EXCEPTION);
 //                Lib.assertNotReached("Unexpected exception");
                 // TODO: unload page table
         }
