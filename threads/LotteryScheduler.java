@@ -27,7 +27,7 @@ import java.util.Iterator;
  * Unlike a priority scheduler, these tickets add (as opposed to just taking
  * the maximum).
  */
-public class LotteryScheduler extends PriorityScheduler {
+public class LotteryScheduler extends Scheduler {
     /**
      * Allocate a new lottery scheduler.
      */
@@ -492,24 +492,25 @@ public class LotteryScheduler extends PriorityScheduler {
     }
 
     public void selfTest() {
-        return;
-//        Machine.interrupt().disable();
-//        int N = 1000;
-//        KThread T[] = new KThread[N];
-//        for (int i = 0; i < N; i++) {
-//            T[i] = new KThread();
-//            T[i].setName("" + i);
-//        }
-//        LPriorityQueue q0 = new LPriorityQueue(true), q1 = new LPriorityQueue(true), q2 = new LPriorityQueue(false);
-//
-//        for (int i = 0; i < N; i++) {
-//            q2.waitForAccess(T[i]);
-//        }
-//        for (int i = 0; i < N; i++) {
-//            setPriority(T[i], i + 1);
-//        }
-//        for (int i = 0; i < N; i++) {
-//            q2.nextThread();
-//        }
+        System.out.println("Lottery test");
+        Machine.interrupt().disable();
+        int N = 1000;
+        KThread T[] = new KThread[N];
+        for (int i = 0; i < N; i++) {
+            T[i] = new KThread();
+            T[i].setName("" + i);
+        }
+        LPriorityQueue q0 = new LPriorityQueue(true), q1 = new LPriorityQueue(true), q2 = new LPriorityQueue(false);
+
+        for (int i = 0; i < N; i++) {
+            q2.waitForAccess(T[i]);
+        }
+        for (int i = 0; i < N; i++) {
+            setPriority(T[i], i + 1);
+        }
+        for (int i = 0; i < N; i++) {
+            q2.nextThread();
+        }
+        System.out.println("Lottery test end");
     }
 }

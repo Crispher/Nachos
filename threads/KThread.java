@@ -526,6 +526,7 @@ public class KThread {
 		forked.join();	
 */		
 		test4();
+		new LotteryScheduler().selfTest();
 	}
 
 	private static final char dbgThread = 't';
